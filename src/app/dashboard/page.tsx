@@ -1,0 +1,154 @@
+import { createClient } from '@/utils/supabase/server'
+import { Activity, Clock, Users, ArrowRight, Stethoscope } from 'lucide-react'
+import Link from 'next/link'
+
+export default async function DashboardPage() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Real data fetching
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user?.id).single()
+    const role = profile?.role || 'receptionist'
+
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+
+    // 1. Total Patients Today
+    const { count: patientsToday } = await supabase
+        .from('queue')
+        .select('*', { count: 'exact', head: true })
+        .gte('joined_at', startOfDay.toISOString())
+
+    // 2. Critical Cases Waiting
+    const { data: criticalCases } = await supabase
+        .from('queue')
+        .select(`
+        id,
+        status,
+        triage_records!inner(priority_level)
+    `)
+        .eq('status', 'waiting')
+        .in('triage_records.priority_level', ['Emergency', 'Urgent'])
+
+    const criticalCount = criticalCases?.length || 0
+
+    // 3. Avg Wait time - rough estimate based on waiting queue
+    const { data: waitingQueue } = await supabase
+        .from('queue')
+        .select('joined_at')
+        .eq('status', 'waiting')
+
+    let avgWaitMins = 0
+    if (waitingQueue && waitingQueue.length > 0) {
+        const totalWaitMs = waitingQueue.reduce((acc, q) => {
+            return acc + (Date.now() - new Date(q.joined_at).getTime())
+        }, 0)
+        avgWaitMins = Math.floor((totalWaitMs / waitingQueue.length) / 60000)
+    }
+
+    return (
+        <div className="max-w-6xl mx-auto space-y-8">
+            <header>
+                <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Overview</h1>
+                <p className="text-slate-500 mt-1">Welcome back, {profile?.full_name || 'User'}. Here is your live daily summary.</p>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Stat Cards */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-slate-500">Patients Queued Today</p>
+                            <h3 className="text-3xl font-bold text-slate-800 mt-2">{patientsToday || 0}</h3>
+                        </div>
+                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                            <Users className="w-6 h-6" />
+                        </div>
+                    </div>
+                    <div className="mt-4 flex items-center text-sm text-slate-500 font-medium">
+                        <span>Since midnight</span>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-slate-500">Wait Time (Avg)</p>
+                            <h3 className="text-3xl font-bold text-slate-800 mt-2">{avgWaitMins}m</h3>
+                        </div>
+                        <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                            <Clock className="w-6 h-6" />
+                        </div>
+                    </div>
+                    <div className="mt-4 flex items-center text-sm text-emerald-600 font-medium">
+                        <span>Current waiting queue</span>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-slate-500">Critical Cases</p>
+                            <h3 className="text-3xl font-bold text-slate-800 mt-2">{criticalCount}</h3>
+                        </div>
+                        <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+                            <Activity className="w-6 h-6" />
+                        </div>
+                    </div>
+                    <div className="mt-4 flex items-center text-sm text-slate-500 font-medium">
+                        <span>Emergency or Urgent in queue</span>
+                    </div>
+                </div>
+            </div>
+
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight pt-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {(role === 'receptionist' || role === 'admin') && (
+                    <Link href="/dashboard/patients" className="group cursor-pointer bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-200 hover:shadow-md transition flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition">
+                                <Users className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-slate-800">Register Patient</h4>
+                                <p className="text-xs text-slate-500">Add a new patient record</p>
+                            </div>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 transition" />
+                    </Link>
+                )}
+
+                {(role === 'nurse' || role === 'admin') && (
+                    <Link href="/dashboard/triage" className="group cursor-pointer bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-emerald-200 hover:shadow-md transition flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition">
+                                <Activity className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-slate-800">Process Triage</h4>
+                                <p className="text-xs text-slate-500">Record vitals and queue</p>
+                            </div>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition" />
+                    </Link>
+                )}
+
+                {(role === 'doctor' || role === 'admin') && (
+                    <Link href="/dashboard/consultations" className="group cursor-pointer bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-blue-200 hover:shadow-md transition flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition">
+                                <Stethoscope className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-slate-800">Next Consultation</h4>
+                                <p className="text-xs text-slate-500">See waiting patients</p>
+                            </div>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition" />
+                    </Link>
+                )}
+            </div>
+
+        </div>
+    )
+}
