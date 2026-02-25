@@ -1,6 +1,9 @@
 import { createClient } from '@/utils/supabase/server'
 import ConsultationsClient from './ConsultationsClient'
 
+type PriorityLevel = 'Emergency' | 'Urgent' | 'Normal'
+const PRIORITY_ORDER: PriorityLevel[] = ['Emergency', 'Urgent', 'Normal']
+
 export default async function ConsultationsPage() {
     const supabase = await createClient()
 
@@ -30,13 +33,26 @@ export default async function ConsultationsPage() {
         .eq('status', 'waiting')
         .order('joined_at', { ascending: true })
 
-    // @ts-ignore Since our join logic is guaranteed if queue rows exist
-    const liveQueueMapped = waitingQueue?.map(q => ({
+    const liveQueueMapped = (waitingQueue?.map((q: any) => ({
         id: q.id,
         joined_at: q.joined_at,
         patient: Array.isArray(q.patients) ? q.patients[0] : (q.patients || {}),
         triage: Array.isArray(q.triage_records) ? q.triage_records[0] : (q.triage_records || {})
-    })) || []
+    })) || []) as {
+        id: string
+        joined_at: string
+        triage: { priority_level: PriorityLevel }
+        [key: string]: any
+    }[]
+
+    // Sort by clinical priority first, then by time in queue
+    const liveQueueSorted = liveQueueMapped.sort((a, b) => {
+        const priorityDiff =
+            PRIORITY_ORDER.indexOf(a.triage.priority_level) - PRIORITY_ORDER.indexOf(b.triage.priority_level)
+        if (priorityDiff !== 0) return priorityDiff
+
+        return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
+    })
 
     // 2. Fetch completed/active consultations for this doctor to show in history
     const { data: consultationsRaw } = await supabase
@@ -67,5 +83,5 @@ export default async function ConsultationsPage() {
         prescriptions: c.prescriptions || []
     })) || []
 
-    return <ConsultationsClient liveQueue={liveQueueMapped as any} pastConsultations={pastConsultationsMapped as any} />
+    return <ConsultationsClient liveQueue={liveQueueSorted as any} pastConsultations={pastConsultationsMapped as any} />
 }

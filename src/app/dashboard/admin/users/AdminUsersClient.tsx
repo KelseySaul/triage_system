@@ -14,22 +14,54 @@ type Profile = {
     is_active: boolean
 }
 
+type ToastState = { type: 'success' | 'error'; message: string } | null
+
 export default function AdminUsersClient({ profiles }: { profiles: Profile[] }) {
     const router = useRouter()
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [actionMenuOpenId, setActionMenuOpenId] = useState<string | null>(null)
+    const [toast, setToast] = useState<ToastState>(null)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'doctor' | 'nurse' | 'receptionist'>('all')
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all')
+
+    const totalUsers = profiles.length
+    const activeUsers = profiles.filter(p => p.is_active).length
+    const suspendedUsers = totalUsers - activeUsers
+    const admins = profiles.filter(p => p.role === 'admin').length
+    const doctors = profiles.filter(p => p.role === 'doctor').length
+    const nurses = profiles.filter(p => p.role === 'nurse').length
+
+    const filteredProfiles = profiles.filter((p) => {
+        const matchesSearch =
+            !searchQuery ||
+            p.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.email.toLowerCase().includes(searchQuery.toLowerCase())
+
+        const matchesRole = roleFilter === 'all' || p.role === roleFilter
+        const matchesStatus =
+            statusFilter === 'all' ||
+            (statusFilter === 'active' && p.is_active) ||
+            (statusFilter === 'suspended' && !p.is_active)
+
+        return matchesSearch && matchesRole && matchesStatus
+    })
 
     const handleAddUser = async (formData: FormData) => {
         setIsSubmitting(true)
+        setToast(null)
         try {
             await addUser(formData)
             setIsAddModalOpen(false)
             router.refresh()
-            alert("User successfully created and added to the directory.")
+            setToast({ type: 'success', message: 'User successfully created and added to the directory.' })
         } catch (e: any) {
-            console.error("Add User UI Error:", e)
-            alert(`Failed to add user: ${e.message || 'Please check server logs.'}`)
+            console.error('Add User UI Error:', e)
+            setToast({
+                type: 'error',
+                message: e?.message || 'Failed to add user. Please check server logs.'
+            })
         } finally {
             setIsSubmitting(false)
         }
@@ -38,12 +70,21 @@ export default function AdminUsersClient({ profiles }: { profiles: Profile[] }) 
     const handleToggleStatus = async (user: Profile) => {
         if (!confirm(`Are you sure you want to ${user.is_active ? 'suspend' : 'reactivate'} ${user.full_name}?`)) return
         setIsSubmitting(true)
+        setToast(null)
         try {
             await toggleUserStatus(user.id, user.is_active)
             setActionMenuOpenId(null)
             router.refresh()
-        } catch {
-            alert("Failed to update status")
+            setToast({
+                type: 'success',
+                message: `User ${user.is_active ? 'suspended' : 're-activated'} successfully.`
+            })
+        } catch (e: any) {
+            console.error('Toggle status error:', e)
+            setToast({
+                type: 'error',
+                message: 'Failed to update status. Please try again.'
+            })
         } finally {
             setIsSubmitting(false)
         }
@@ -52,12 +93,21 @@ export default function AdminUsersClient({ profiles }: { profiles: Profile[] }) 
     const handleTerminate = async (user: Profile) => {
         if (!confirm(`Are you absolutely sure you want to permanently terminate ${user.full_name}'s account? This action cannot be undone.`)) return
         setIsSubmitting(true)
+        setToast(null)
         try {
             await terminateUser(user.id)
             setActionMenuOpenId(null)
             router.refresh()
-        } catch {
-            alert("Failed to terminate user")
+            setToast({
+                type: 'success',
+                message: 'User account terminated.'
+            })
+        } catch (e: any) {
+            console.error('Terminate user error:', e)
+            setToast({
+                type: 'error',
+                message: 'Failed to terminate user. Please try again.'
+            })
         } finally {
             setIsSubmitting(false)
         }
@@ -65,10 +115,30 @@ export default function AdminUsersClient({ profiles }: { profiles: Profile[] }) 
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">
+            {/* Toast */}
+            {toast && (
+                <div className="fixed top-4 right-4 z-50">
+                    <div
+                        className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${
+                            toast.type === 'success'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-red-50 text-red-800 border-red-200'
+                        }`}
+                    >
+                        {toast.message}
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-800 tracking-tight">User Management</h1>
-                    <p className="text-slate-500 mt-1">Manage staff accounts, roles, and system access.</p>
+                    <p className="text-slate-500 mt-1">
+                        Manage staff accounts, roles, and system access.
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                        {totalUsers} users • {admins} admins • {doctors} doctors • {nurses} nurses
+                    </p>
                 </div>
                 <button
                     onClick={() => setIsAddModalOpen(true)}
@@ -77,6 +147,78 @@ export default function AdminUsersClient({ profiles }: { profiles: Profile[] }) 
                     <UserPlus className="w-5 h-5" />
                     <span>Add New User</span>
                 </button>
+            </div>
+
+            {/* Overview cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Total Users
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">{totalUsers}</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                        {activeUsers} active • {suspendedUsers} suspended
+                    </p>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Clinical Staff
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">
+                        {doctors + nurses}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                        {doctors} doctors • {nurses} nurses
+                    </p>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Admin & Ops
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">{admins}</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                        System administrators
+                    </p>
+                </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="flex-1">
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by name or email..."
+                        className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500"
+                    />
+                </div>
+                <div className="flex gap-3">
+                    <select
+                        value={roleFilter}
+                        onChange={(e) =>
+                            setRoleFilter(e.target.value as typeof roleFilter)
+                        }
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 bg-white focus:ring-2 focus:ring-indigo-500"
+                    >
+                        <option value="all">All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="doctor">Doctor</option>
+                        <option value="nurse">Nurse</option>
+                        <option value="receptionist">Receptionist</option>
+                    </select>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) =>
+                            setStatusFilter(e.target.value as typeof statusFilter)
+                        }
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 bg-white focus:ring-2 focus:ring-indigo-500"
+                    >
+                        <option value="all">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="suspended">Suspended</option>
+                    </select>
+                </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-visible relative">
@@ -92,7 +234,7 @@ export default function AdminUsersClient({ profiles }: { profiles: Profile[] }) 
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 relative">
-                            {profiles?.map((p) => (
+                            {filteredProfiles.map((p) => (
                                 <tr key={p.id} className="hover:bg-slate-50 transition">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center space-x-3">
@@ -155,7 +297,7 @@ export default function AdminUsersClient({ profiles }: { profiles: Profile[] }) 
                                                         )}
                                                     </button>
 
-                                                    {p.role !== 'admin' && ( // Prevent deleting other admins to avoid lockout
+                                                    {p.role !== 'admin' && (
                                                         <button
                                                             onClick={() => handleTerminate(p)}
                                                             disabled={isSubmitting}
@@ -171,11 +313,11 @@ export default function AdminUsersClient({ profiles }: { profiles: Profile[] }) 
                                 </tr>
                             ))}
 
-                            {(!profiles || profiles.length === 0) && (
+                            {filteredProfiles.length === 0 && (
                                 <tr>
                                     <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                                         <ShieldCheck className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                                        <p>No user profiles found.</p>
+                                        <p>No user profiles match your filters.</p>
                                     </td>
                                 </tr>
                             )}
@@ -228,6 +370,9 @@ export default function AdminUsersClient({ profiles }: { profiles: Profile[] }) 
                                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500"
                                     placeholder="********"
                                 />
+                                <p className="text-xs text-slate-400 mt-1">
+                                    Share this only once; ask the user to reset it after first login.
+                                </p>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium text-slate-700">Role</label>

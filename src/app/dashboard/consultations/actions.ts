@@ -10,15 +10,12 @@ export async function attendToPatient(queueId: string, patientId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized")
 
-    // 1. Create Consultation Record using Service Role Key to bypass RLS
-    // (In a true production app, you would fix the RLS policy itself to allow doctors to insert)
     const adminSupabase = createSupabaseClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         { auth: { persistSession: false } }
     )
 
-    // 2. Update Queue status to 'completed' as it leaves the live queue
     const { error: queueError } = await adminSupabase
         .from('queue')
         .update({ status: 'completed' })
@@ -26,26 +23,31 @@ export async function attendToPatient(queueId: string, patientId: string) {
 
     if (queueError) throw new Error(`Failed connecting patient out of queue: ${queueError.message}`)
 
-    const { error: consultError } = await adminSupabase
+    const { data: consultation, error: consultError } = await adminSupabase
         .from('consultations')
         .insert([
             {
                 doctor_id: user.id,
                 patient_id: patientId,
-                diagnosis: '', // initially empty, doctor fills it out
+                diagnosis: '',
                 notes: ''
             }
         ])
+        .select('id, created_at')
+        .single()
 
-    if (consultError) throw new Error(`Failed to initialize active consultation: ${consultError.message}`)
+    if (consultError || !consultation) {
+        throw new Error(`Failed to initialize active consultation: ${consultError?.message || 'Unknown error'}`)
+    }
 
     revalidatePath('/dashboard/consultations')
+
+    return consultation
 }
 
 export async function finishConsultation(consultationId: string, diagnosis: string, notes: string) {
     const supabase = await createClient()
 
-    // 1. Update Consultation
     const { error: consultError } = await supabase
         .from('consultations')
         .update({
@@ -97,3 +99,4 @@ export async function addPrescription(formData: FormData) {
 
     revalidatePath('/dashboard/consultations')
 }
+

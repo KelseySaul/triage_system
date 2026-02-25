@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, Search } from 'lucide-react'
 import { createTriageRecord } from './actions'
+import { calculatePriority } from '@/utils/triage'
 
 type Patient = {
     id: string
@@ -23,6 +24,7 @@ export default function NewTriageModal({
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedPatientId, setSelectedPatientId] = useState<string>('')
+    const [error, setError] = useState<string | null>(null)
 
     const [bpSys, setBpSys] = useState('')
     const [bpDia, setBpDia] = useState('')
@@ -42,26 +44,12 @@ export default function NewTriageModal({
         const temperature = Number(temp)
         const oxygen = Number(spo2)
 
-        let newPriority = 'Normal'
-
-        // Emergency criteria (Red)
-        if (
-            (sys > 0 && (sys <= 90 || sys >= 220)) ||
-            (heart > 0 && (heart <= 40 || heart >= 130)) ||
-            (temperature > 0 && (temperature <= 35 || temperature >= 39.1)) ||
-            (oxygen > 0 && oxygen <= 91)
-        ) {
-            newPriority = 'Emergency'
-        }
-        // Urgent criteria (Orange)
-        else if (
-            (sys > 0 && (sys <= 100 || sys >= 200)) ||
-            (heart > 0 && (heart <= 50 || heart >= 110)) ||
-            (temperature > 0 && (temperature <= 36 || temperature >= 38.1)) ||
-            (oxygen > 0 && oxygen <= 95)
-        ) {
-            newPriority = 'Urgent'
-        }
+        const newPriority = calculatePriority({
+            systolicBp: sys,
+            heartRate: heart,
+            temperature,
+            spo2: oxygen
+        })
 
         setPriority(newPriority)
     }, [bpSys, hr, temp, spo2])
@@ -74,13 +62,14 @@ export default function NewTriageModal({
 
     const handleSubmit = async (formData: FormData) => {
         if (!selectedPatientId) {
-            alert("Please select a patient first.")
+            setError('Please select a patient before saving.')
             return
         }
 
         formData.append('patient_id', selectedPatientId)
 
         setIsSubmitting(true)
+        setError(null)
         try {
             await createTriageRecord(formData)
             onClose()
@@ -92,9 +81,9 @@ export default function NewTriageModal({
             setTemp('')
             setSpo2('')
             setPriority('')
-        } catch (error) {
-            console.error(error)
-            alert("Failed to save triage assessment")
+        } catch (err: any) {
+            console.error(err)
+            setError(err?.message || 'Failed to save triage assessment. Please try again.')
         } finally {
             setIsSubmitting(false)
         }
@@ -113,7 +102,12 @@ export default function NewTriageModal({
                     </button>
                 </div>
 
-                <div className="overflow-y-auto p-6">
+                <div className="overflow-y-auto p-6 space-y-4">
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">
+                            {error}
+                        </div>
+                    )}
                     {/* Patient Selection Section */}
                     <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <h3 className="text-sm font-semibold text-slate-800 mb-3">1. Select Patient</h3>

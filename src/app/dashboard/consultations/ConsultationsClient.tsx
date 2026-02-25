@@ -58,6 +58,7 @@ export default function ConsultationsClient({
     const router = useRouter()
     const [activeConsultation, setActiveConsultation] = useState<ConsultationParams | null>(pastConsultations.length > 0 ? (pastConsultations.find(c => c.diagnosis === '' || c.notes === '') || pastConsultations[0]) : null)
     const [isProcessing, setIsProcessing] = useState(false)
+    const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
     // Local state for editing the active consultation
     const [editMode, setEditMode] = useState(false)
@@ -74,17 +75,33 @@ export default function ConsultationsClient({
         window.print()
     }
 
-    const handleAttend = async (queueId: string, patientId: string) => {
+    const handleAttend = async (queueItem: QueueItem) => {
         setIsProcessing(true)
+        setToast(null)
         try {
-            // Trigger server action to pull them out of queue and create Consultation
-            await attendToPatient(queueId, patientId)
-            // Ideally we would get the new Consultation back and set it Active here.
-            // Since the page will refresh via revalidatePath, it should pop in naturally on reload.
-            alert("Patient assigned. The page will reload momentarily to reflect your active consultation.")
+            const consultation = await attendToPatient(queueItem.id, queueItem.patient.id)
+            setActiveConsultation({
+                id: consultation.id,
+                created_at: consultation.created_at,
+                diagnosis: '',
+                notes: '',
+                patient: {
+                    id: queueItem.patient.id,
+                    first_name: queueItem.patient.first_name,
+                    last_name: queueItem.patient.last_name,
+                    gender: 'Unknown',
+                    dob: '' as any,
+                },
+                prescriptions: []
+            } as ConsultationParams)
+            setEditMode(true)
+            setLocalDiagnosis('')
+            setLocalNotes('')
+            setToast({ type: 'success', message: 'Patient assigned. Consultation started.' })
+            router.refresh()
         } catch (e) {
             console.error(e)
-            alert('Failed to attend to patient')
+            setToast({ type: 'error', message: 'Failed to attend to patient. Please try again.' })
         } finally {
             setIsProcessing(false)
         }
@@ -93,6 +110,7 @@ export default function ConsultationsClient({
     const handleFinish = async () => {
         if (!activeConsultation) return
         setIsProcessing(true)
+        setToast(null)
         try {
             await finishConsultation(activeConsultation.id, localDiagnosis, localNotes)
 
@@ -105,10 +123,10 @@ export default function ConsultationsClient({
             })
 
             setEditMode(false)
-            alert("Consultation saved successfully")
+            setToast({ type: 'success', message: 'Consultation saved successfully.' })
         } catch (e) {
             console.error(e)
-            alert("Failed to save consultation")
+            setToast({ type: 'error', message: 'Failed to save consultation. Please try again.' })
         } finally {
             setIsProcessing(false)
         }
@@ -143,7 +161,20 @@ export default function ConsultationsClient({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 print:hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 print:hidden relative">
+                {toast && (
+                    <div className="fixed top-4 right-4 z-50">
+                        <div
+                            className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${
+                                toast.type === 'success'
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : 'bg-red-50 text-red-800 border-red-200'
+                            }`}
+                        >
+                            {toast.message}
+                        </div>
+                    </div>
+                )}
 
                 {/* Left Sidebar - Live Queue & History */}
                 <div className="lg:col-span-4 space-y-6 flex flex-col h-[calc(100vh-12rem)] min-h-[600px]">
@@ -180,7 +211,7 @@ export default function ConsultationsClient({
                                     </div>
 
                                     <button
-                                        onClick={() => handleAttend(q.id, q.patient.id)}
+                                        onClick={() => handleAttend(q)}
                                         disabled={isProcessing}
                                         className="w-full bg-slate-900 hover:bg-indigo-600 text-white text-sm font-bold py-2.5 rounded-xl transition shadow-sm disabled:opacity-50"
                                     >
@@ -361,6 +392,7 @@ export default function ConsultationsClient({
                                     {showPrescriptionForm && (
                                         <form action={async (formData) => {
                                             setIsProcessing(true)
+                                            setToast(null)
                                             try {
                                                 formData.append('consultation_id', currentActive.id)
                                                 await addPrescription(formData)
@@ -368,7 +400,10 @@ export default function ConsultationsClient({
                                                 router.refresh()
                                             } catch (e: any) {
                                                 console.error("Prescription Error:", e)
-                                                alert(`Failed to add prescription: ${e.message || 'Unknown error'}`)
+                                                setToast({
+                                                    type: 'error',
+                                                    message: `Failed to add prescription: ${e.message || 'Unknown error'}`
+                                                })
                                             } finally {
                                                 setIsProcessing(false)
                                             }

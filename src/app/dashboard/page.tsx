@@ -1,25 +1,24 @@
 import { createClient } from '@/utils/supabase/server'
 import { Activity, Clock, Users, ArrowRight, Stethoscope } from 'lucide-react'
 import Link from 'next/link'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { StatCard } from '@/components/ui/StatCard'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Real data fetching
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user?.id).single()
     const role = profile?.role || 'receptionist'
 
     const startOfDay = new Date()
     startOfDay.setHours(0, 0, 0, 0)
 
-    // 1. Total Patients Today
     const { count: patientsToday } = await supabase
         .from('queue')
         .select('*', { count: 'exact', head: true })
         .gte('joined_at', startOfDay.toISOString())
 
-    // 2. Critical Cases Waiting
     const { data: criticalCases } = await supabase
         .from('queue')
         .select(`
@@ -32,7 +31,6 @@ export default async function DashboardPage() {
 
     const criticalCount = criticalCases?.length || 0
 
-    // 3. Avg Wait time - rough estimate based on waiting queue
     const { data: waitingQueue } = await supabase
         .from('queue')
         .select('joined_at')
@@ -48,57 +46,34 @@ export default async function DashboardPage() {
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">
-            <header>
-                <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Overview</h1>
-                <p className="text-slate-500 mt-1">Welcome back, {profile?.full_name || 'User'}. Here is your live daily summary.</p>
-            </header>
+            <PageHeader
+                kicker="Today"
+                title="Overview"
+                subtitle={`Welcome back, ${profile?.full_name || 'User'}. Here is your live daily summary.`}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Stat Cards */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-slate-500">Patients Queued Today</p>
-                            <h3 className="text-3xl font-bold text-slate-800 mt-2">{patientsToday || 0}</h3>
-                        </div>
-                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                            <Users className="w-6 h-6" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center text-sm text-slate-500 font-medium">
-                        <span>Since midnight</span>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-slate-500">Wait Time (Avg)</p>
-                            <h3 className="text-3xl font-bold text-slate-800 mt-2">{avgWaitMins}m</h3>
-                        </div>
-                        <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
-                            <Clock className="w-6 h-6" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center text-sm text-emerald-600 font-medium">
-                        <span>Current waiting queue</span>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-slate-500">Critical Cases</p>
-                            <h3 className="text-3xl font-bold text-slate-800 mt-2">{criticalCount}</h3>
-                        </div>
-                        <div className="p-3 bg-red-50 text-red-600 rounded-xl">
-                            <Activity className="w-6 h-6" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center text-sm text-slate-500 font-medium">
-                        <span>Emergency or Urgent in queue</span>
-                    </div>
-                </div>
+                <StatCard
+                    label="Patients Queued Today"
+                    value={patientsToday || 0}
+                    helper="Since midnight"
+                    icon={<Users className="w-6 h-6" />}
+                    tone="info"
+                />
+                <StatCard
+                    label="Wait Time (Avg)"
+                    value={`${avgWaitMins}m`}
+                    helper="Current waiting queue"
+                    icon={<Clock className="w-6 h-6" />}
+                    tone="warning"
+                />
+                <StatCard
+                    label="Critical Cases"
+                    value={criticalCount}
+                    helper="Emergency or Urgent in queue"
+                    icon={<Activity className="w-6 h-6" />}
+                    tone="danger"
+                />
             </div>
 
             <h2 className="text-xl font-bold text-slate-800 tracking-tight pt-4">Quick Actions</h2>
