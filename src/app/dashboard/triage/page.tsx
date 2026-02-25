@@ -3,6 +3,22 @@ import TriageClient from './TriageClient'
 
 type PriorityLevel = 'Emergency' | 'Urgent' | 'Normal'
 
+type TriageRecord = {
+  id: string
+  bp_sys: number
+  diastolic_bp: number
+  heart_rate: number
+  temperature: number
+  spo2: number
+  symptoms: string
+  priority_level: PriorityLevel
+  created_at: string
+  patient: {
+    first_name: string
+    last_name: string
+  }
+}
+
 const PRIORITY_ORDER: PriorityLevel[] = ['Emergency', 'Urgent', 'Normal']
 
 export default async function TriagePage() {
@@ -35,22 +51,17 @@ export default async function TriagePage() {
     .order('joined_at', { ascending: true })
 
   // Map the structured data to flatter representations for the client
-  const mappedRecords = (recordsData?.map((q: any) => {
+  const mappedRecords: TriageRecord[] = (recordsData?.map((q: any) => {
     const triageData = Array.isArray(q.triage_records) ? q.triage_records[0] : (q.triage_records || {})
     return {
       ...triageData,
       id: q.id, // Ensure the parent queue ID is passed to match Doctor actions if needed
       patient: Array.isArray(q.patients) ? q.patients[0] : (q.patients || {})
     }
-  }) || []) as {
-    id: string
-    priority_level: PriorityLevel
-    created_at: string
-    [key: string]: any
-  }[]
+  }) || []) as TriageRecord[]
 
   // Sort by clinical priority first, then by time waiting
-  const sortedRecords = mappedRecords.sort((a, b) => {
+  const sortedRecords: TriageRecord[] = [...mappedRecords].sort((a, b) => {
     const priorityDiff =
       PRIORITY_ORDER.indexOf(a.priority_level) - PRIORITY_ORDER.indexOf(b.priority_level)
     if (priorityDiff !== 0) return priorityDiff
@@ -63,3 +74,4 @@ export default async function TriagePage() {
 
   return <TriageClient initialRecords={sortedRecords} patients={patientsData} />
 }
+
