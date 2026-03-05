@@ -6,6 +6,8 @@ import AddPatientModal from './AddPatientModal'
 import EditPatientModal from './EditPatientModal'
 import ViewPatientModal from './ViewPatientModal'
 
+import { PageHeader } from '@/components/ui/PageHeader'
+
 type Patient = {
     id: string
     first_name: string
@@ -31,19 +33,20 @@ export default function PatientsClient({ initialPatients }: { initialPatients: P
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Patients</h1>
-                    <p className="text-slate-500 mt-1">Manage and view all registered patients.</p>
-                </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-md shadow-indigo-200 flex items-center space-x-2"
-                >
-                    <Plus className="w-5 h-5" />
-                    <span>Add Patient</span>
-                </button>
-            </div>
+            <PageHeader
+                title="Patients"
+                subtitle="Manage and view all registered patients."
+                showBackButton={true}
+                actions={
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-md shadow-indigo-200 flex items-center space-x-2"
+                    >
+                        <Plus className="w-5 h-5" />
+                        <span>Add Patient</span>
+                    </button>
+                }
+            />
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center">

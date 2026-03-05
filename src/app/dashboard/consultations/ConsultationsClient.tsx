@@ -6,6 +6,8 @@ import { Stethoscope, ClipboardList, Pill, CalendarClock, Download, Edit3, Activ
 import { attendToPatient, finishConsultation, addPrescription } from './actions'
 import PatientHistoryModal from './PatientHistoryModal'
 
+import { PageHeader } from '@/components/ui/PageHeader'
+
 type Prescription = {
     id: string
     medication_name: string
@@ -143,33 +145,33 @@ export default function ConsultationsClient({
 
     return (
         <div className="max-w-7xl mx-auto space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Doctor Workspace</h1>
-                    <p className="text-slate-500 mt-1">Manage the Live Queue and your active consultations.</p>
-                </div>
-                <div className="flex space-x-3 print:hidden">
-                    {activeConsultation?.diagnosis && (
-                        <button
-                            onClick={handlePrintReceipt}
-                            className="bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-xl font-bold transition shadow-sm flex items-center space-x-2"
-                        >
-                            <Download className="w-5 h-5 text-indigo-600" />
-                            <span>Print Patient Receipt</span>
-                        </button>
-                    )}
-                </div>
-            </div>
+            <PageHeader
+                title="Doctor Workspace"
+                subtitle="Manage the Live Queue and your active consultations."
+                showBackButton={true}
+                actions={
+                    <div className="flex space-x-3 print:hidden">
+                        {activeConsultation?.diagnosis && (
+                            <button
+                                onClick={handlePrintReceipt}
+                                className="bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-xl font-bold transition shadow-sm flex items-center space-x-2"
+                            >
+                                <Download className="w-5 h-5 text-indigo-600" />
+                                <span>Print Patient Receipt</span>
+                            </button>
+                        )}
+                    </div>
+                }
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 print:hidden relative">
                 {toast && (
                     <div className="fixed top-4 right-4 z-50">
                         <div
-                            className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${
-                                toast.type === 'success'
+                            className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${toast.type === 'success'
                                     ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                     : 'bg-red-50 text-red-800 border-red-200'
-                            }`}
+                                }`}
                         >
                             {toast.message}
                         </div>

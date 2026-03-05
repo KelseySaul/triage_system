@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { Activity, Clock, User } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 export default async function ReceptionistQueuePage() {
     const supabase = await createClient()
@@ -32,10 +33,11 @@ export default async function ReceptionistQueuePage() {
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Live Queue</h1>
-                <p className="text-slate-500 mt-1">Current status of patients waiting for triage or consultation.</p>
-            </div>
+            <PageHeader
+                title="Live Queue"
+                subtitle="Current status of patients waiting for triage or consultation."
+                showBackButton={true}
+            />
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-4 border-b border-slate-200 bg-slate-50 font-bold text-slate-800 flex items-center space-x-2">

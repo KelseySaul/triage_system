@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Activity, Thermometer, HeartPulse, AlertCircle, Clock } from 'lucide-react'
 import NewTriageModal from './NewTriageModal'
 
+import { PageHeader } from '@/components/ui/PageHeader'
+
 // Define triage record type matching our query
 type TriageRecord = {
     id: string
@@ -53,19 +55,20 @@ export default function TriageClient({
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Triage Queue</h1>
-                    <p className="text-slate-500 mt-1">Record vitals and assess patient priority.</p>
-                </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-md shadow-emerald-200 flex items-center space-x-2"
-                >
-                    <Activity className="w-5 h-5" />
-                    <span>New Triage Assessment</span>
-                </button>
-            </div>
+            <PageHeader
+                title="Triage Queue"
+                subtitle="Record vitals and assess patient priority."
+                showBackButton={true}
+                actions={
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-md shadow-emerald-200 flex items-center space-x-2"
+                    >
+                        <Activity className="w-5 h-5" />
+                        <span>New Triage Assessment</span>
+                    </button>
+                }
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-4">

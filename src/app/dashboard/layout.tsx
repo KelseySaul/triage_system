@@ -1,7 +1,8 @@
-import { Users, UserPlus, ClipboardList, Activity, Stethoscope, LogOut, ShieldCheck } from 'lucide-react'
+import { Users, ClipboardList, Activity, Stethoscope, LogOut, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
+import { MobileNav } from '@/components/ui/MobileNav'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const supabase = await createClient()
@@ -17,9 +18,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     const role = profile?.role || 'receptionist'
 
     return (
-        <div className="flex h-screen bg-slate-50">
+        <div className="flex flex-col md:flex-row h-screen bg-slate-50 overflow-hidden">
+            <MobileNav role={role} profile={profile} userEmail={user.email} />
+
             {/* Sidebar */}
-            <aside className="w-64 bg-indigo-900 text-white flex flex-col hidden md:flex">
+            <aside className="w-64 bg-indigo-900 text-white flex flex-col hidden md:flex shrink-0">
                 <div className="p-6 flex items-center space-x-3">
                     <Activity className="w-8 h-8 text-indigo-300" />
                     <span className="text-xl font-bold tracking-tight">Triage System</span>
