@@ -82,14 +82,15 @@ export default function EditPatientModal({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <label htmlFor="dob" className="text-sm font-medium text-slate-700">Date of Birth <span className="text-red-500">*</span></label>
-                            <input
-                                id="dob"
-                                name="dob"
-                                type="date"
-                                defaultValue={patient.dob}
-                                required
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white text-slate-900 placeholder:text-slate-400"
-                            />
+                                <input
+                                    id="dob"
+                                    name="dob"
+                                    type="date"
+                                    defaultValue={patient.dob}
+                                    required
+                                    max={new Date().toISOString().split('T')[0]}
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white text-slate-900 placeholder:text-slate-400"
+                                />
                         </div>
                         <div className="space-y-1">
                             <label htmlFor="gender" className="text-sm font-medium text-slate-700">Gender</label>

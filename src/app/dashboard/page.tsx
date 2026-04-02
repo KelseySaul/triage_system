@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
-import { Activity, Clock, Users, ArrowRight, Stethoscope } from 'lucide-react'
+import { Activity, Clock, Users, ArrowRight, Stethoscope, Calendar } from 'lucide-react'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 
@@ -10,6 +11,56 @@ export default async function DashboardPage() {
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user?.id).single()
     const role = profile?.role || 'receptionist'
+
+    if (role === 'patient') {
+        const { data: patientRecord } = await supabase.from('patients').select('id').eq('user_id', user?.id).maybeSingle()
+        
+        if (!patientRecord) {
+            redirect('/dashboard/patient/setup')
+        }
+
+        let pendingAppointments = 0
+        if (patientRecord) {
+            const { count } = await supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('patient_id', patientRecord.id).eq('status', 'pending')
+            pendingAppointments = count || 0
+        }
+
+        return (
+            <div className="max-w-6xl mx-auto space-y-8">
+                <PageHeader
+                    kicker="Welcome"
+                    title="Patient Portal"
+                    subtitle={`Hello, ${profile?.full_name || 'User'}. Manage your health records here.`}
+                />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <StatCard
+                        label="Pending Appointments"
+                        value={pendingAppointments}
+                        helper="Awaiting approval"
+                        icon={<Calendar className="w-6 h-6" />}
+                        tone="info"
+                    />
+                </div>
+
+                <h2 className="text-xl font-bold text-slate-800 tracking-tight pt-4">Quick Actions</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Link href="/dashboard/patient/appointments" className="group cursor-pointer bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-200 hover:shadow-md transition flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition">
+                                <Calendar className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-slate-800">Book Appointment</h4>
+                                <p className="text-xs text-slate-500">Schedule your next visit</p>
+                            </div>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 transition" />
+                    </Link>
+                </div>
+            </div>
+        )
+    }
 
     const startOfDay = new Date()
     startOfDay.setHours(0, 0, 0, 0)

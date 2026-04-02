@@ -1,4 +1,4 @@
-import { Users, ClipboardList, Activity, Stethoscope, LogOut, ShieldCheck } from 'lucide-react'
+import { Users, ClipboardList, Activity, Stethoscope, LogOut, ShieldCheck, Calendar, History } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
@@ -12,10 +12,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         redirect('/login')
     }
 
-    // Determine role.
+    // Determine role. Priority: DB Profile > Auth Metadata > Default 'receptionist'
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-
-    const role = profile?.role || 'receptionist'
+    const role = profile?.role || user.user_metadata?.role || 'receptionist'
 
     return (
         <div className="flex flex-col md:flex-row h-screen bg-slate-50 overflow-hidden">
@@ -44,6 +43,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
                                 <Activity className="w-5 h-5 text-indigo-300" />
                                 <span className="font-medium text-indigo-50">Live Queue</span>
                             </Link>
+                            <Link href="/dashboard/receptionist/appointments" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition">
+                                <Calendar className="w-5 h-5 text-indigo-300" />
+                                <span className="font-medium text-indigo-50">Pending Appointments</span>
+                            </Link>
                         </>
                     )}
 
@@ -59,6 +62,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
                             <Stethoscope className="w-5 h-5 text-indigo-300" />
                             <span className="font-medium text-indigo-50">Consultations</span>
                         </Link>
+                    )}
+
+                    {role === 'patient' && (
+                        <>
+                            <Link href="/dashboard/patient/appointments" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition">
+                                <Calendar className="w-5 h-5 text-indigo-300" />
+                                <span className="font-medium text-indigo-50">Book Appointment</span>
+                            </Link>
+                            <Link href="/dashboard/patient/history" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition">
+                                <History className="w-5 h-5 text-indigo-300" />
+                                <span className="font-medium text-indigo-50">My Medical History</span>
+                            </Link>
+                        </>
                     )}
 
                     {role === 'admin' && (

@@ -1,5 +1,6 @@
 import { login, forgotPassword } from './actions'
 import { Hospital, Building2 } from 'lucide-react'
+import Link from 'next/link'
 
 export default function LoginPage() {
     return (
@@ -65,8 +66,14 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                <div className="mt-8 text-center relative z-10">
-                    <p className="text-xs text-slate-400 font-medium">Internal Hospital Use Only. Restricted Access.</p>
+                <div className="mt-8 text-center relative z-10 space-y-4">
+                    <p className="text-sm font-medium text-slate-600">
+                        New patient?{' '}
+                        <Link href="/signup" className="text-indigo-600 hover:text-indigo-700 font-bold transition">
+                            Create an account
+                        </Link>
+                    </p>
+                    <p className="text-xs text-slate-400 font-medium border-t border-slate-100 pt-4">Internal Hospital Use Only. Restricted Access.</p>
                 </div>
             </div>
         </div>

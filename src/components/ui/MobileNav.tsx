@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, X, Activity, ClipboardList, Users, Stethoscope, ShieldCheck, LogOut } from 'lucide-react'
+import { Menu, X, Activity, ClipboardList, Users, Stethoscope, ShieldCheck, LogOut, Calendar, History } from 'lucide-react'
 
 type MobileNavProps = {
     role: string
@@ -81,6 +81,14 @@ export function MobileNav({ role, profile, userEmail }: MobileNavProps) {
                                         <Activity className="w-5 h-5 text-indigo-300" />
                                         <span className="font-medium">Live Queue</span>
                                     </Link>
+                                    <Link
+                                        href="/dashboard/receptionist/appointments"
+                                        onClick={toggleMenu}
+                                        className="flex items-center space-x-4 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+                                    >
+                                        <Calendar className="w-5 h-5 text-indigo-300" />
+                                        <span className="font-medium">Appointments</span>
+                                    </Link>
                                 </>
                             )}
 
@@ -104,6 +112,27 @@ export function MobileNav({ role, profile, userEmail }: MobileNavProps) {
                                     <Stethoscope className="w-5 h-5 text-indigo-300" />
                                     <span className="font-medium">Consultations</span>
                                 </Link>
+                            )}
+
+                            {role === 'patient' && (
+                                <>
+                                    <Link
+                                        href="/dashboard/patient/appointments"
+                                        onClick={toggleMenu}
+                                        className="flex items-center space-x-4 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+                                    >
+                                        <Calendar className="w-5 h-5 text-indigo-300" />
+                                        <span className="font-medium">Book Appointment</span>
+                                    </Link>
+                                    <Link
+                                        href="/dashboard/patient/history"
+                                        onClick={toggleMenu}
+                                        className="flex items-center space-x-4 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+                                    >
+                                        <History className="w-5 h-5 text-indigo-300" />
+                                        <span className="font-medium">My Medical History</span>
+                                    </Link>
+                                </>
                             )}
 
                             {role === 'admin' && (
